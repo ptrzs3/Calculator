@@ -20,6 +20,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -148,7 +149,7 @@ private fun KeyboardModeToggleButton(
     onToggleInputPane: () -> Unit
 ) {
     val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    val containerColor = if (isDarkTheme) Color(0, 52, 114) else Color(245, 245, 245)
+    val containerColor = if (isDarkTheme) Color(32, 32, 32) else Color(245, 245, 245)
     val iconColor = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.onSurface
 
     val icon = if (inputPane == ProgrammerInputPane.KEYPAD) {
@@ -181,7 +182,7 @@ private fun ProgrammerMenuChip(
     modifier: Modifier = Modifier
 ) {
     val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    val containerColor = if (isDarkTheme) Color(0, 52, 114) else Color(245, 245, 245)
+    val containerColor = if (isDarkTheme) Color(32, 32, 32) else Color(245, 245, 245)
     val primaryTextColor = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.onSurface
     val secondaryTextColor = if (isDarkTheme) Color.White.copy(alpha = 0.82f) else MaterialTheme.colorScheme.onSurfaceVariant
 
@@ -221,6 +222,8 @@ private fun ProgrammerBitwiseMenu(
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val menuContainerColor = if (isDarkTheme) Color(44, 44, 44) else MaterialTheme.colorScheme.surface
     Box(modifier = modifier) {
         ProgrammerMenuChip(
             label = "\u6309\u4f4d",
@@ -230,7 +233,8 @@ private fun ProgrammerBitwiseMenu(
         )
         DropdownMenu(
             expanded = expanded,
-            onDismissRequest = { expanded = false }
+            onDismissRequest = { expanded = false },
+            containerColor = menuContainerColor
         ) {
             Column(
                 modifier = Modifier.padding(6.dp),
@@ -275,7 +279,7 @@ private fun BitwiseActionButton(
     onClick: () -> Unit
 ) {
     val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    val containerColor = if (isDarkTheme) Color(0, 52, 114) else Color(250, 250, 250)
+    val containerColor = if (isDarkTheme) Color(63, 63, 63) else Color(250, 250, 250)
     val textColor = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.onSurface
 
     Surface(
@@ -305,7 +309,7 @@ private fun ProgrammerWordSizeMenu(
     onWordSizeChange: (Int) -> Unit
 ) {
     val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    val containerColor = if (isDarkTheme) Color(0, 52, 114) else Color(245, 245, 245)
+    val containerColor = if (isDarkTheme) Color(32, 32, 32) else Color(245, 245, 245)
     val textColor = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.onSurface
 
     val current = when (wordSize) {
@@ -349,6 +353,10 @@ private fun ProgrammerShiftMenu(
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val menuContainerColor = if (isDarkTheme) Color(44, 44, 44) else MaterialTheme.colorScheme.surface
+    val itemContainerColor = if (isDarkTheme) Color(63, 63, 63) else Color.Transparent
+    val itemTextColor = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.onSurface
     val options = listOf(
         ProgrammerShiftMode.ARITHMETIC to "\u7b97\u672f\u79fb\u4f4d",
         ProgrammerShiftMode.LOGICAL to "\u903b\u8f91\u79fb\u4f4d",
@@ -363,7 +371,11 @@ private fun ProgrammerShiftMenu(
             onClick = { expanded = true },
             modifier = Modifier.fillMaxWidth()
         )
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            containerColor = menuContainerColor
+        ) {
             options.forEach { (mode, label) ->
                 DropdownMenuItem(
                     text = {
@@ -375,9 +387,23 @@ private fun ProgrammerShiftMenu(
                                 selected = mode == shiftMode,
                                 onClick = null
                             )
-                            Text(label)
+                            Text(label, color = itemTextColor)
                         }
                     },
+                    colors = MenuDefaults.itemColors(
+                        textColor = itemTextColor,
+                        leadingIconColor = itemTextColor,
+                        trailingIconColor = itemTextColor,
+                        disabledTextColor = itemTextColor.copy(alpha = 0.38f),
+                        disabledLeadingIconColor = itemTextColor.copy(alpha = 0.38f),
+                        disabledTrailingIconColor = itemTextColor.copy(alpha = 0.38f)
+                    ),
+                    modifier = Modifier
+                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                        .background(
+                            color = itemContainerColor,
+                            shape = RoundedCornerShape(6.dp)
+                        ),
                     onClick = {
                         expanded = false
                         onShiftModeChange(mode)
