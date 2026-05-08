@@ -3,6 +3,8 @@ package com.example.myapplication.reducer
 import com.example.myapplication.model.CalculatorAction
 import com.example.myapplication.model.CalculatorMode
 import com.example.myapplication.model.CalculatorState
+import java.math.BigDecimal
+import java.math.RoundingMode
 import kotlin.math.cos
 import kotlin.math.ln
 import kotlin.math.log10
@@ -66,7 +68,7 @@ private fun reduceScientific(
         CalculatorAction.Tan -> reduceUnaryOperation(state, "tan") { tan(Math.toRadians(it)) }
         CalculatorAction.Ln -> reduceUnaryOperation(state, "ln") { if (it <= 0.0) null else ln(it) }
         CalculatorAction.Log10 -> reduceUnaryOperation(state, "log") { if (it <= 0.0) null else log10(it) }
-        CalculatorAction.Pi -> replaceScientificConstant(state, Math.PI, "蟺")
+        CalculatorAction.Pi -> replaceScientificConstant(state, Math.PI, "π")
         CalculatorAction.E -> replaceScientificConstant(state, Math.E, "e")
         CalculatorAction.Power -> reduceOperator(state, "^")
         else -> reduceStandard(state, action)
@@ -353,8 +355,8 @@ private fun performProgrammerCalculation(
 private fun normalizeProgrammerOperator(op: String): String? {
     return when (op.trim()) {
         "+", "-", "AND", "OR", "NAND", "NOR", "XOR", "<<", ">>" -> op.trim()
-        "*", "×", "脳" -> "*"
-        "/", "÷", "梅" -> "/"
+        "*", "×", "x", "X", "脳", "鑴?" -> "*"
+        "/", "÷", "／", "梅", "姊?" -> "/"
         "mod", "MOD", "%" -> "mod"
         else -> null
     }
@@ -540,7 +542,7 @@ private fun reduceSquareRoot(state: CalculatorState): CalculatorState {
 
     if (currentNumber < 0.0) {
         return state.copy(
-            expressionText = "鈭?${state.displayText})",
+            expressionText = "√(${state.displayText})",
             displayText = "Error",
             firstNumber = null,
             operator = null,
@@ -558,7 +560,7 @@ private fun reduceSquareRoot(state: CalculatorState): CalculatorState {
             currentInput = formatted
         )
     } else {
-        "鈭?${state.displayText})"
+        "√(${state.displayText})"
     }
 
     return state.copy(
@@ -604,9 +606,10 @@ private fun reducePercent(state: CalculatorState): CalculatorState {
         )
     }
 
-    val percentValue = when (state.operator) {
+    val normalizedOperator = state.operator?.let(::normalizeArithmeticOperator) ?: return state
+    val percentValue = when (normalizedOperator) {
         "+", "-" -> state.firstNumber * currentNumber / 100.0
-        "脳", "梅" -> currentNumber / 100.0
+        "*", "/" -> currentNumber / 100.0
         else -> return state
     }
 
@@ -871,23 +874,46 @@ private fun buildExpressionText(
 }
 
 private fun performCalculation(first: Double, operator: String, second: Double): String? {
-    val result = when (operator) {
-        "+" -> first + second
-        "-" -> first - second
-        "脳" -> first * second
-        "梅" -> {
-            if (second == 0.0) {
+    val normalizedOperator = normalizeArithmeticOperator(operator) ?: return null
+    val firstDecimal = BigDecimal.valueOf(first)
+    val secondDecimal = BigDecimal.valueOf(second)
+    val decimalResult = when (normalizedOperator) {
+        "+" -> firstDecimal.add(secondDecimal)
+        "-" -> firstDecimal.subtract(secondDecimal)
+        "*" -> firstDecimal.multiply(secondDecimal)
+        "/" -> {
+            if (secondDecimal.compareTo(BigDecimal.ZERO) == 0) {
                 return "Error"
             } else {
-                first / second
+                firstDecimal.divide(secondDecimal, 16, RoundingMode.HALF_UP)
             }
         }
-        "^" -> Math.pow(first, second)
+        "mod" -> {
+            if (secondDecimal.compareTo(BigDecimal.ZERO) == 0) {
+                return "Error"
+            } else {
+                firstDecimal.remainder(secondDecimal)
+            }
+        }
+        "^" -> return Math.pow(first, second).toString()
         else -> return null
     }
 
-    return result.toString()
+    return decimalResult.stripTrailingZeros().toPlainString()
 }
+
+private fun normalizeArithmeticOperator(operator: String): String? {
+    return when (operator.trim()) {
+        "+" -> "+"
+        "-" -> "-"
+        "*", "×", "x", "X", "脳", "鑴?" -> "*"
+        "/", "÷", "／", "梅", "姊?" -> "/"
+        "mod", "MOD", "%" -> "mod"
+        "^" -> "^"
+        else -> null
+    }
+}
+
 
 private fun formatResult(value: Double): String {
     if (value.isNaN() || value.isInfinite()) return "Error"

@@ -7,6 +7,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -123,8 +124,8 @@ fun CalculatorButton(
                     append("10")
                     withStyle(
                         SpanStyle(
-                            baselineShift = BaselineShift(0.65f),
-                            fontSize = 16.sp
+                            baselineShift = BaselineShift(0.42f),
+                            fontSize = 18.sp
                         )
                     ) {
                         append("x")
@@ -140,7 +141,8 @@ fun CalculatorButton(
                 text = displayText,
                 fontSize = fontSize,
                 color = if (enabled) textColor else disabledTextColor,
-                fontFamily = displayFont
+                fontFamily = displayFont,
+                modifier = if (label == "10\u02e3") Modifier.offset(y = (-5).dp) else Modifier
             )
         }
     }
