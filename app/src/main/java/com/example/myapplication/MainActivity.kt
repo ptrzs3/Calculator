@@ -50,11 +50,16 @@ class MainActivity : ComponentActivity() {
                         isDarkTheme = isDarkTheme,
                         onToggleTheme = { isDarkTheme = !isDarkTheme },
                         onShowInfo = {
-                            Toast.makeText(
+                            val toast = Toast.makeText(
                                 this,
-                                "Implemented by Codex and Claude under human supervision",
+                                "Built by Codex, Claude, Cursor and DeekSeek under human supervision",
                                 Toast.LENGTH_SHORT
-                            ).show()
+                            )
+                            toast.view?.findViewById<android.widget.TextView>(android.R.id.message)?.let {
+                                it.isSingleLine = false
+                                it.maxLines = 3
+                            }
+                            toast.show()
                         }
                     )
                 }

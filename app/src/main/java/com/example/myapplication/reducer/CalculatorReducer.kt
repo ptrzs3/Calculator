@@ -3,6 +3,7 @@ package com.example.myapplication.reducer
 import com.example.myapplication.model.CalculatorAction
 import com.example.myapplication.model.CalculatorMode
 import com.example.myapplication.model.CalculatorState
+import com.example.myapplication.reducer.reduceAdcMode
 import java.math.BigDecimal
 import java.math.RoundingMode
 import kotlin.math.cos
@@ -24,6 +25,7 @@ fun reduceCalculatorState(
             CalculatorMode.STANDARD -> reduceStandard(state, action)
             CalculatorMode.SCIENTIFIC -> reduceScientificMode(state, action)
             CalculatorMode.PROGRAMMER -> reduceProgrammer(state, action)
+            CalculatorMode.ADC -> reduceAdcMode(state, action)
         }
     }
 }

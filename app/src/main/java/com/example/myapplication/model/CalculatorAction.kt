@@ -62,4 +62,12 @@ sealed class CalculatorAction {
     object Xor : CalculatorAction()
     object ShiftLeft : CalculatorAction()
     object ShiftRight : CalculatorAction()
+
+    // ADC mode
+    object ToggleAdcDirection : CalculatorAction()
+    data class ChangeAdcResolution(val bits: Int) : CalculatorAction()
+    data class ChangeAdcVrefPlus(val voltage: Double) : CalculatorAction()
+    data class ChangeAdcVrefMinus(val voltage: Double) : CalculatorAction()
+    data class ChangeAdcEncoding(val encoding: AdcEncoding) : CalculatorAction()
+    object ApplyAdcPreset : CalculatorAction()
 }

@@ -17,5 +17,14 @@ data class CalculatorState(
     val scientificExpression: String = "",
     val scientificSecondEnabled: Boolean = false,
     val scientificHypEnabled: Boolean = false,
-    val scientificTrigSecondEnabled: Boolean = false
+    val scientificTrigSecondEnabled: Boolean = false,
+    // ADC mode
+    val adcDirection: AdcDirection = AdcDirection.DIGITAL_TO_ANALOG,
+    val adcResolution: Int = 12,
+    val adcVrefPlus: Double = 3.3,
+    val adcVrefMinus: Double = 0.0,
+    val adcEncoding: AdcEncoding = AdcEncoding.STRAIGHT_BINARY,
+    val adcDigitalValue: Long = 0L,
+    val adcAnalogValue: Double = 0.0,
+    val adcPresetIndex: Int = 0
 )

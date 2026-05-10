@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Science
+import androidx.compose.material.icons.filled.ToggleOn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -35,19 +36,22 @@ fun ModeSelector(
     val nextMode = when (currentMode) {
         CalculatorMode.STANDARD -> CalculatorMode.SCIENTIFIC
         CalculatorMode.SCIENTIFIC -> CalculatorMode.PROGRAMMER
-        CalculatorMode.PROGRAMMER -> CalculatorMode.STANDARD
+        CalculatorMode.PROGRAMMER -> CalculatorMode.ADC
+        CalculatorMode.ADC -> CalculatorMode.STANDARD
     }
 
     val modeIcon = when (currentMode) {
         CalculatorMode.STANDARD -> Icons.Filled.Calculate
         CalculatorMode.SCIENTIFIC -> Icons.Filled.Science
         CalculatorMode.PROGRAMMER -> Icons.Filled.DataObject
+        CalculatorMode.ADC -> Icons.Filled.ToggleOn
     }
 
     val modeDescription = when (currentMode) {
         CalculatorMode.STANDARD -> "Current mode: Standard"
         CalculatorMode.SCIENTIFIC -> "Current mode: Scientific"
         CalculatorMode.PROGRAMMER -> "Current mode: Programmer"
+        CalculatorMode.ADC -> "Current mode: ADC"
     }
 
     TopIconButton(

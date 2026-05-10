@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import com.example.myapplication.model.CalculatorAction
 import com.example.myapplication.model.CalculatorMode
 import com.example.myapplication.model.ProgrammerInputPane
+import com.example.myapplication.ui.AdcPanel
 import com.example.myapplication.viewmodel.CalculatorViewModel
 
 @Composable
@@ -69,6 +70,32 @@ fun CalculatorScreen(
                     },
                     onBitwiseAction = { viewModel.onAction(it) },
                     onShiftModeChange = { viewModel.onAction(CalculatorAction.ChangeProgrammerShiftMode(it)) }
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+            } else if (state.mode == CalculatorMode.ADC) {
+                Display(
+                    expressionText = state.expressionText,
+                    displayText = state.displayText,
+                    preferTrailingEdge = !state.isNewInput
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                AdcPanel(
+                    direction = state.adcDirection,
+                    resolution = state.adcResolution,
+                    vrefPlus = state.adcVrefPlus,
+                    vrefMinus = state.adcVrefMinus,
+                    encoding = state.adcEncoding,
+                    digitalValue = state.adcDigitalValue,
+                    analogValue = state.adcAnalogValue,
+                    presetIndex = state.adcPresetIndex,
+                    onDirectionToggle = { viewModel.onAction(CalculatorAction.ToggleAdcDirection) },
+                    onResolutionChange = { viewModel.onAction(CalculatorAction.ChangeAdcResolution(it)) },
+                    onVrefPlusChange = { viewModel.onAction(CalculatorAction.ChangeAdcVrefPlus(it)) },
+                    onVrefMinusChange = { viewModel.onAction(CalculatorAction.ChangeAdcVrefMinus(it)) },
+                    onEncodingChange = { viewModel.onAction(CalculatorAction.ChangeAdcEncoding(it)) },
+                    onApplyPreset = { viewModel.onAction(CalculatorAction.ApplyAdcPreset) }
                 )
                 Spacer(modifier = Modifier.height(6.dp))
             } else {
@@ -129,7 +156,9 @@ fun CalculatorScreen(
                     mode = state.mode,
                     scientificSecondEnabled = state.scientificSecondEnabled,
                     programmerBase = state.programmerBase,
-                    onAction = { action -> viewModel.onAction(action) }
+                    onAction = { action -> viewModel.onAction(action) },
+                    adcDirection = state.adcDirection,
+                    adcResolution = state.adcResolution
                 )
             }
 
