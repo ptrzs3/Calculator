@@ -49,8 +49,14 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
-            if (keystorePropertiesFile.exists()) {
-                signingConfig = signingConfigs.getByName("release")
+            // keystore.properties is not in git (see .gitignore). Without it, a raw
+            // unsigned release APK cannot be installed. Fall back to the debug key so
+            // `assembleRelease` is still installable for device testing. For Play
+            // Store or real release signing, add keystore.properties + your .jks.
+            signingConfig = if (keystorePropertiesFile.exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
             }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
