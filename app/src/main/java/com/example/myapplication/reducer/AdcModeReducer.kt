@@ -47,6 +47,16 @@ private fun reduceAdcBackspace(state: CalculatorState): CalculatorState {
 }
 
 private fun reduceAdcToggleSign(state: CalculatorState): CalculatorState {
+    if (state.adcDirection == AdcDirection.DIGITAL_TO_ANALOG) {
+        if (state.adcEncoding != AdcEncoding.TWOS_COMPLEMENT) return state
+        val text = state.displayText
+        val newText = when {
+            text == "0" || text == "Error" -> "0"
+            text.startsWith("-") -> text.removePrefix("-")
+            else -> "-$text"
+        }
+        return updateAdcWithInput(state, newText)
+    }
     if (state.adcDirection != AdcDirection.ANALOG_TO_DIGITAL) return state
     val text = state.displayText
     val newText = when {
@@ -77,31 +87,31 @@ private fun reduceAdcNumber(state: CalculatorState, value: String): CalculatorSt
 }
 
 private fun reduceAdcDigitalNumber(state: CalculatorState, value: String): CalculatorState {
-    val digitValue = value.toIntOrNull(16) ?: return state
+    value.toIntOrNull(10) ?: return state
 
     val currentText = if (state.isNewInput || state.displayText == "0") "" else state.displayText
-    val candidate = (currentText + value.uppercase())
+    val candidate = currentText + value
     if (candidate.isBlank()) return state
 
-    val maxHexDigits = ((state.adcResolution + 3) / 4).coerceAtLeast(1)
-    if (candidate.length > maxHexDigits) return state
-
-    val parsed = candidate.toLongOrNull(16) ?: return state
     val maxCode = (1L shl state.adcResolution) - 1L
-    if (parsed > maxCode) return state
 
-    val newAnalog = codeToVoltage(parsed, state.adcVrefPlus, state.adcVrefMinus,
-        state.adcResolution, state.adcEncoding)
-    val expression = when (state.adcEncoding) {
-        AdcEncoding.STRAIGHT_BINARY -> "0x${candidate} = ${formatVoltage(newAnalog)}"
-        AdcEncoding.TWOS_COMPLEMENT -> "0x${candidate} = ${formatVoltage(newAnalog)}"
+    val signedInput = candidate.toLongOrNull() ?: return state
+    val unsignedCode = if (signedInput < 0) {
+        signedInput and maxCode
+    } else {
+        if (signedInput > maxCode) return state
+        signedInput
     }
+
+    val newAnalog = codeToVoltage(unsignedCode, state.adcVrefPlus, state.adcVrefMinus,
+        state.adcResolution, state.adcEncoding)
+    val codeHex = unsignedCode.toString(16).uppercase()
 
     return state.copy(
         displayText = candidate,
-        adcDigitalValue = parsed,
+        adcDigitalValue = unsignedCode,
         adcAnalogValue = newAnalog,
-        expressionText = expression,
+        expressionText = "$candidate (0x$codeHex) = ${formatVoltage(newAnalog)} V",
         isNewInput = false
     )
 }
@@ -122,19 +132,24 @@ private fun reduceAdcAnalogNumber(state: CalculatorState, value: String): Calcul
 private fun updateAdcWithInput(state: CalculatorState, inputText: String): CalculatorState {
     return when (state.adcDirection) {
         AdcDirection.DIGITAL_TO_ANALOG -> {
-            val parsed = inputText.toLongOrNull(16) ?: run {
+            val signedInput = inputText.toLongOrNull() ?: run {
                 return state.copy(displayText = inputText, isNewInput = false)
             }
             val maxCode = (1L shl state.adcResolution) - 1L
-            if (parsed > maxCode) return state
-            val newAnalog = codeToVoltage(parsed, state.adcVrefPlus, state.adcVrefMinus,
+            val unsignedCode = if (signedInput < 0) {
+                signedInput and maxCode
+            } else {
+                if (signedInput > maxCode) return state
+                signedInput
+            }
+            val newAnalog = codeToVoltage(unsignedCode, state.adcVrefPlus, state.adcVrefMinus,
                 state.adcResolution, state.adcEncoding)
-            val expression = "0x${inputText.uppercase()} = ${formatVoltage(newAnalog)}"
+            val codeHex = unsignedCode.toString(16).uppercase()
             state.copy(
-                displayText = inputText.uppercase(),
-                adcDigitalValue = parsed,
+                displayText = inputText,
+                adcDigitalValue = unsignedCode,
                 adcAnalogValue = newAnalog,
-                expressionText = expression,
+                expressionText = "$inputText (0x$codeHex) = ${formatVoltage(newAnalog)} V",
                 isNewInput = false
             )
         }
@@ -147,12 +162,11 @@ private fun updateAdcWithInput(state: CalculatorState, inputText: String): Calcu
             val codeHex = newCode.toString(16).uppercase().padStart(
                 ((state.adcResolution + 3) / 4).coerceAtLeast(1), '0'
             )
-            val expression = "${formatVoltage(voltage)} = 0x$codeHex"
             state.copy(
                 displayText = inputText,
                 adcAnalogValue = voltage,
                 adcDigitalValue = newCode,
-                expressionText = expression,
+                expressionText = "${formatVoltage(voltage)} V = $newCode (0x$codeHex)",
                 isNewInput = false
             )
         }
@@ -165,25 +179,23 @@ private fun toggleAdcDirection(state: CalculatorState): CalculatorState {
         AdcDirection.ANALOG_TO_DIGITAL -> AdcDirection.DIGITAL_TO_ANALOG
     }
 
+    val codeHex = state.adcDigitalValue.toString(16).uppercase()
+    val codeHexPadded = codeHex.padStart(
+        ((state.adcResolution + 3) / 4).coerceAtLeast(1), '0'
+    )
+    val voltStr = formatVoltage(state.adcAnalogValue)
+
     val newDisplay = when (newDirection) {
-        AdcDirection.DIGITAL_TO_ANALOG -> {
-            val codeHex = state.adcDigitalValue.toString(16).uppercase()
-            if (codeHex == "0") "0" else codeHex
-        }
-        AdcDirection.ANALOG_TO_DIGITAL -> formatVoltage(state.adcAnalogValue)
+        AdcDirection.DIGITAL_TO_ANALOG ->
+            if (state.adcDigitalValue == 0L) "0" else state.adcDigitalValue.toString()
+        AdcDirection.ANALOG_TO_DIGITAL -> voltStr
     }
 
     val newExpression = when (newDirection) {
-        AdcDirection.DIGITAL_TO_ANALOG -> {
-            val codeHex = state.adcDigitalValue.toString(16).uppercase()
-            "0x$codeHex = ${formatVoltage(state.adcAnalogValue)}"
-        }
-        AdcDirection.ANALOG_TO_DIGITAL -> {
-            val codeHex = state.adcDigitalValue.toString(16).uppercase().padStart(
-                ((state.adcResolution + 3) / 4).coerceAtLeast(1), '0'
-            )
-            "${formatVoltage(state.adcAnalogValue)} = 0x$codeHex"
-        }
+        AdcDirection.DIGITAL_TO_ANALOG ->
+            "${state.adcDigitalValue} (0x$codeHex) = $voltStr V"
+        AdcDirection.ANALOG_TO_DIGITAL ->
+            "$voltStr V = ${state.adcDigitalValue} (0x$codeHexPadded)"
     }
 
     return state.copy(
@@ -200,18 +212,8 @@ private fun changeAdcResolution(state: CalculatorState, bits: Int): CalculatorSt
     val analog = codeToVoltage(digital, state.adcVrefPlus, state.adcVrefMinus, clamped, state.adcEncoding)
     val codeHex = digital.toString(16).uppercase()
 
-    val expression = when (state.adcDirection) {
-        AdcDirection.DIGITAL_TO_ANALOG -> "0x$codeHex = ${formatVoltage(analog)}"
-        AdcDirection.ANALOG_TO_DIGITAL -> {
-            val paddedHex = codeHex.padStart(((clamped + 3) / 4).coerceAtLeast(1), '0')
-            "${formatVoltage(analog)} = 0x$paddedHex"
-        }
-    }
-
-    val display = when (state.adcDirection) {
-        AdcDirection.DIGITAL_TO_ANALOG -> if (codeHex == "0") "0" else codeHex
-        AdcDirection.ANALOG_TO_DIGITAL -> formatVoltage(analog)
-    }
+    val expression = buildExpr(state.adcDirection, digital, codeHex, analog, clamped)
+    val display = buildDisplay(state.adcDirection, digital, analog)
 
     return state.copy(
         adcResolution = clamped,
@@ -226,19 +228,11 @@ private fun changeAdcResolution(state: CalculatorState, bits: Int): CalculatorSt
 private fun changeAdcVrefPlus(state: CalculatorState, voltage: Double): CalculatorState {
     val analog = codeToVoltage(state.adcDigitalValue, voltage, state.adcVrefMinus,
         state.adcResolution, state.adcEncoding)
-    val codeHex = state.adcDigitalValue.toString(16).uppercase()
-
     return state.copy(
         adcVrefPlus = voltage,
         adcAnalogValue = analog,
-        displayText = when (state.adcDirection) {
-            AdcDirection.DIGITAL_TO_ANALOG -> if (codeHex == "0") "0" else codeHex
-            AdcDirection.ANALOG_TO_DIGITAL -> formatVoltage(analog)
-        },
-        expressionText = when (state.adcDirection) {
-            AdcDirection.DIGITAL_TO_ANALOG -> "0x$codeHex = ${formatVoltage(analog)}"
-            AdcDirection.ANALOG_TO_DIGITAL -> "${formatVoltage(analog)} = 0x$codeHex"
-        },
+        expressionText = buildExpr(state.adcDirection, state.adcDigitalValue,
+            state.adcDigitalValue.toString(16).uppercase(), analog, state.adcResolution),
         isNewInput = true
     )
 }
@@ -246,19 +240,11 @@ private fun changeAdcVrefPlus(state: CalculatorState, voltage: Double): Calculat
 private fun changeAdcVrefMinus(state: CalculatorState, voltage: Double): CalculatorState {
     val analog = codeToVoltage(state.adcDigitalValue, state.adcVrefPlus, voltage,
         state.adcResolution, state.adcEncoding)
-    val codeHex = state.adcDigitalValue.toString(16).uppercase()
-
     return state.copy(
         adcVrefMinus = voltage,
         adcAnalogValue = analog,
-        displayText = when (state.adcDirection) {
-            AdcDirection.DIGITAL_TO_ANALOG -> if (codeHex == "0") "0" else codeHex
-            AdcDirection.ANALOG_TO_DIGITAL -> formatVoltage(analog)
-        },
-        expressionText = when (state.adcDirection) {
-            AdcDirection.DIGITAL_TO_ANALOG -> "0x$codeHex = ${formatVoltage(analog)}"
-            AdcDirection.ANALOG_TO_DIGITAL -> "${formatVoltage(analog)} = 0x$codeHex"
-        },
+        expressionText = buildExpr(state.adcDirection, state.adcDigitalValue,
+            state.adcDigitalValue.toString(16).uppercase(), analog, state.adcResolution),
         isNewInput = true
     )
 }
@@ -266,19 +252,11 @@ private fun changeAdcVrefMinus(state: CalculatorState, voltage: Double): Calcula
 private fun changeAdcEncoding(state: CalculatorState, encoding: AdcEncoding): CalculatorState {
     val analog = codeToVoltage(state.adcDigitalValue, state.adcVrefPlus, state.adcVrefMinus,
         state.adcResolution, encoding)
-    val codeHex = state.adcDigitalValue.toString(16).uppercase()
-
     return state.copy(
         adcEncoding = encoding,
         adcAnalogValue = analog,
-        displayText = when (state.adcDirection) {
-            AdcDirection.DIGITAL_TO_ANALOG -> if (codeHex == "0") "0" else codeHex
-            AdcDirection.ANALOG_TO_DIGITAL -> formatVoltage(analog)
-        },
-        expressionText = when (state.adcDirection) {
-            AdcDirection.DIGITAL_TO_ANALOG -> "0x$codeHex = ${formatVoltage(analog)}"
-            AdcDirection.ANALOG_TO_DIGITAL -> "${formatVoltage(analog)} = 0x$codeHex"
-        },
+        expressionText = buildExpr(state.adcDirection, state.adcDigitalValue,
+            state.adcDigitalValue.toString(16).uppercase(), analog, state.adcResolution),
         isNewInput = true
     )
 }
@@ -290,7 +268,6 @@ fun cycleAdcPreset(state: CalculatorState): CalculatorState {
     val mask = (1L shl newResolution) - 1L
     val digital = state.adcDigitalValue and mask
     val analog = codeToVoltage(digital, preset.vrefPlus, preset.vrefMinus, newResolution, preset.encoding)
-    val codeHex = digital.toString(16).uppercase()
 
     return state.copy(
         adcPresetIndex = nextIndex,
@@ -300,16 +277,36 @@ fun cycleAdcPreset(state: CalculatorState): CalculatorState {
         adcEncoding = preset.encoding,
         adcDigitalValue = digital,
         adcAnalogValue = analog,
-        displayText = when (state.adcDirection) {
-            AdcDirection.DIGITAL_TO_ANALOG -> if (codeHex == "0") "0" else codeHex
-            AdcDirection.ANALOG_TO_DIGITAL -> formatVoltage(analog)
-        },
-        expressionText = when (state.adcDirection) {
-            AdcDirection.DIGITAL_TO_ANALOG -> "0x$codeHex = ${formatVoltage(analog)}"
-            AdcDirection.ANALOG_TO_DIGITAL -> "${formatVoltage(analog)} = 0x$codeHex"
-        },
+        expressionText = buildExpr(state.adcDirection, digital,
+            digital.toString(16).uppercase(), analog, newResolution),
         isNewInput = true
     )
+}
+
+private fun buildExpr(
+    direction: AdcDirection,
+    code: Long,
+    codeHex: String,
+    voltage: Double,
+    resolution: Int
+): String {
+    val voltStr = formatVoltage(voltage)
+    return when (direction) {
+        AdcDirection.DIGITAL_TO_ANALOG -> "$code (0x$codeHex) = $voltStr V"
+        AdcDirection.ANALOG_TO_DIGITAL -> {
+            val padded = codeHex.padStart(((resolution + 3) / 4).coerceAtLeast(1), '0')
+            "$voltStr V = $code (0x$padded)"
+        }
+    }
+}
+
+private fun buildDisplay(
+    direction: AdcDirection,
+    code: Long,
+    voltage: Double
+): String = when (direction) {
+    AdcDirection.DIGITAL_TO_ANALOG -> if (code == 0L) "0" else code.toString()
+    AdcDirection.ANALOG_TO_DIGITAL -> formatVoltage(voltage)
 }
 
 // --- Core conversion functions ---

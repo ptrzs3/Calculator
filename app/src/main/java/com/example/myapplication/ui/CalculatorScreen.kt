@@ -89,13 +89,11 @@ fun CalculatorScreen(
                     encoding = state.adcEncoding,
                     digitalValue = state.adcDigitalValue,
                     analogValue = state.adcAnalogValue,
-                    presetIndex = state.adcPresetIndex,
                     onDirectionToggle = { viewModel.onAction(CalculatorAction.ToggleAdcDirection) },
                     onResolutionChange = { viewModel.onAction(CalculatorAction.ChangeAdcResolution(it)) },
                     onVrefPlusChange = { viewModel.onAction(CalculatorAction.ChangeAdcVrefPlus(it)) },
                     onVrefMinusChange = { viewModel.onAction(CalculatorAction.ChangeAdcVrefMinus(it)) },
-                    onEncodingChange = { viewModel.onAction(CalculatorAction.ChangeAdcEncoding(it)) },
-                    onApplyPreset = { viewModel.onAction(CalculatorAction.ApplyAdcPreset) }
+                    onEncodingChange = { viewModel.onAction(CalculatorAction.ChangeAdcEncoding(it)) }
                 )
                 Spacer(modifier = Modifier.height(6.dp))
             } else {
@@ -158,7 +156,8 @@ fun CalculatorScreen(
                     programmerBase = state.programmerBase,
                     onAction = { action -> viewModel.onAction(action) },
                     adcDirection = state.adcDirection,
-                    adcResolution = state.adcResolution
+                    adcResolution = state.adcResolution,
+                    adcEncoding = state.adcEncoding
                 )
             }
 

@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.model.AdcDirection
+import com.example.myapplication.model.AdcEncoding
 import com.example.myapplication.model.CalculatorAction
 import com.example.myapplication.model.CalculatorMode
 
@@ -25,13 +26,14 @@ fun Keypad(
     onAction: (CalculatorAction) -> Unit,
     modifier: Modifier = Modifier,
     adcDirection: AdcDirection = AdcDirection.DIGITAL_TO_ANALOG,
-    adcResolution: Int = 12
+    adcResolution: Int = 12,
+    adcEncoding: AdcEncoding = AdcEncoding.STRAIGHT_BINARY
 ) {
     val keypadRows = when (mode) {
         CalculatorMode.STANDARD -> standardRows()
         CalculatorMode.SCIENTIFIC -> scientificRows(scientificSecondEnabled)
         CalculatorMode.PROGRAMMER -> programmerRows(programmerBase)
-        CalculatorMode.ADC -> adcRows(adcDirection, adcResolution)
+        CalculatorMode.ADC -> adcRows(adcDirection, adcResolution, adcEncoding)
     }
 
     Column(
@@ -265,49 +267,42 @@ private fun programmerRows(base: Int) = listOf(
     )
 )
 
-private fun adcRows(direction: AdcDirection, resolution: Int): List<List<CalculatorKey>> {
+private fun adcRows(
+    direction: AdcDirection,
+    resolution: Int,
+    encoding: AdcEncoding
+): List<List<CalculatorKey>> {
     return when (direction) {
-        AdcDirection.DIGITAL_TO_ANALOG -> adcDigitalRows()
+        AdcDirection.DIGITAL_TO_ANALOG -> adcDigitalRows(encoding)
         AdcDirection.ANALOG_TO_DIGITAL -> adcAnalogRows()
     }
 }
 
-private fun adcDigitalRows() = listOf(
-    listOf(
-        CalculatorKey("A", CalculatorAction.Number("A")),
-        CalculatorKey("B", CalculatorAction.Number("B")),
-        CalculatorKey("C", CalculatorAction.Number("C")),
-        CalculatorKey("\u232b", CalculatorAction.Backspace)
-    ),
-    listOf(
-        CalculatorKey("D", CalculatorAction.Number("D")),
-        CalculatorKey("E", CalculatorAction.Number("E")),
-        CalculatorKey("F", CalculatorAction.Number("F")),
-        CalculatorKey("C", CalculatorAction.Clear)
-    ),
+private fun adcDigitalRows(encoding: AdcEncoding) = listOf(
     listOf(
         CalculatorKey("7", CalculatorAction.Number("7")),
         CalculatorKey("8", CalculatorAction.Number("8")),
         CalculatorKey("9", CalculatorAction.Number("9")),
-        CalculatorKey("\u21c4", CalculatorAction.ToggleAdcDirection)
+        CalculatorKey("\u232b", CalculatorAction.Backspace)
     ),
     listOf(
         CalculatorKey("4", CalculatorAction.Number("4")),
         CalculatorKey("5", CalculatorAction.Number("5")),
         CalculatorKey("6", CalculatorAction.Number("6")),
-        CalculatorKey("CE", CalculatorAction.ClearEntry)
+        CalculatorKey("C", CalculatorAction.Clear)
     ),
     listOf(
         CalculatorKey("1", CalculatorAction.Number("1")),
         CalculatorKey("2", CalculatorAction.Number("2")),
         CalculatorKey("3", CalculatorAction.Number("3")),
-        CalculatorKey("Pre", CalculatorAction.ApplyAdcPreset)
+        CalculatorKey("CE", CalculatorAction.ClearEntry)
     ),
     listOf(
-        CalculatorKey("+/-", CalculatorAction.ToggleSign, enabled = false),
+        CalculatorKey("+/-", CalculatorAction.ToggleSign,
+            enabled = encoding == AdcEncoding.TWOS_COMPLEMENT),
         CalculatorKey("0", CalculatorAction.Number("0")),
-        CalculatorKey(".", CalculatorAction.Decimal, enabled = false),
-        CalculatorKey("\u25b6", CalculatorAction.Equals)
+        CalculatorKey("Pre", CalculatorAction.ApplyAdcPreset),
+        CalculatorKey("", CalculatorAction.Equals, enabled = false)
     )
 )
 
@@ -328,18 +323,12 @@ private fun adcAnalogRows() = listOf(
         CalculatorKey("1", CalculatorAction.Number("1")),
         CalculatorKey("2", CalculatorAction.Number("2")),
         CalculatorKey("3", CalculatorAction.Number("3")),
-        CalculatorKey("\u21c4", CalculatorAction.ToggleAdcDirection)
+        CalculatorKey("CE", CalculatorAction.ClearEntry)
     ),
     listOf(
         CalculatorKey("+/-", CalculatorAction.ToggleSign),
         CalculatorKey("0", CalculatorAction.Number("0")),
         CalculatorKey(".", CalculatorAction.Decimal),
-        CalculatorKey("CE", CalculatorAction.ClearEntry)
-    ),
-    listOf(
-        CalculatorKey("Pre", CalculatorAction.ApplyAdcPreset),
-        CalculatorKey("", CalculatorAction.Equals, enabled = false),
-        CalculatorKey("", CalculatorAction.Equals, enabled = false),
-        CalculatorKey("\u25b6", CalculatorAction.Equals)
+        CalculatorKey("Pre", CalculatorAction.ApplyAdcPreset)
     )
 )

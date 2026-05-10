@@ -34,7 +34,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.model.AdcDirection
 import com.example.myapplication.model.AdcEncoding
-import com.example.myapplication.reducer.adcPresets
 import com.example.myapplication.reducer.formatVoltage
 import com.example.myapplication.reducer.lsbVoltage
 import com.example.myapplication.reducer.maxCode
@@ -49,13 +48,11 @@ fun AdcPanel(
     encoding: AdcEncoding,
     digitalValue: Long,
     analogValue: Double,
-    presetIndex: Int,
     onDirectionToggle: () -> Unit,
     onResolutionChange: (Int) -> Unit,
     onVrefPlusChange: (Double) -> Unit,
     onVrefMinusChange: (Double) -> Unit,
     onEncodingChange: (AdcEncoding) -> Unit,
-    onApplyPreset: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -89,12 +86,10 @@ fun AdcPanel(
             vrefPlus = vrefPlus,
             vrefMinus = vrefMinus,
             encoding = encoding,
-            presetIndex = presetIndex,
             onResolutionChange = onResolutionChange,
             onVrefPlusChange = onVrefPlusChange,
             onVrefMinusChange = onVrefMinusChange,
-            onEncodingChange = onEncodingChange,
-            onApplyPreset = onApplyPreset
+            onEncodingChange = onEncodingChange
         )
     }
 }
@@ -171,7 +166,8 @@ private fun ConversionResultRow(
     analogValue: Double,
     resolution: Int
 ) {
-    val codeHex = digitalValue.toString(16).uppercase().padStart(
+    val codeHex = digitalValue.toString(16).uppercase()
+    val codeHexPadded = codeHex.padStart(
         ((resolution + 3) / 4).coerceAtLeast(1), '0'
     )
     val textColor = MaterialTheme.colorScheme.onSurface
@@ -184,8 +180,10 @@ private fun ConversionResultRow(
     ) {
         Text(
             text = when (direction) {
-                AdcDirection.DIGITAL_TO_ANALOG -> "0x$codeHex → ${formatVoltage(analogValue)} V"
-                AdcDirection.ANALOG_TO_DIGITAL -> "${formatVoltage(analogValue)} V → 0x$codeHex"
+                AdcDirection.DIGITAL_TO_ANALOG ->
+                    "$digitalValue (0x$codeHex) → ${formatVoltage(analogValue)} V"
+                AdcDirection.ANALOG_TO_DIGITAL ->
+                    "${formatVoltage(analogValue)} V → $digitalValue (0x$codeHexPadded)"
             },
             fontSize = 18.sp,
             color = textColor
@@ -243,12 +241,10 @@ private fun ConfigRow(
     vrefPlus: Double,
     vrefMinus: Double,
     encoding: AdcEncoding,
-    presetIndex: Int,
     onResolutionChange: (Int) -> Unit,
     onVrefPlusChange: (Double) -> Unit,
     onVrefMinusChange: (Double) -> Unit,
-    onEncodingChange: (AdcEncoding) -> Unit,
-    onApplyPreset: () -> Unit
+    onEncodingChange: (AdcEncoding) -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -258,7 +254,7 @@ private fun ConfigRow(
             label = "${resolution}-bit",
             leading = "Res",
             modifier = Modifier.weight(1f),
-            menuContent = {
+            menuContent = { onClose ->
                 listOf(8, 10, 12, 14, 16, 20, 24).forEach { bits ->
                     DropdownMenuItem(
                         text = {
@@ -267,45 +263,32 @@ private fun ConfigRow(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         },
-                        onClick = { onResolutionChange(bits) }
+                        onClick = {
+                            onClose()
+                            onResolutionChange(bits)
+                        }
                     )
                 }
             }
         )
 
         AdcDropdownChip(
-            label = formatVoltage(vrefPlus),
-            leading = "V+",
+            label = encoding.displayName,
+            leading = "Enc",
             modifier = Modifier.weight(1f),
-            menuContent = {
-                listOf(1.8, 2.5, 3.3, 5.0, 10.0).forEach { v ->
+            menuContent = { onClose ->
+                AdcEncoding.entries.forEach { enc ->
                     DropdownMenuItem(
                         text = {
                             Text(
-                                "${formatVoltage(v)} V",
+                                enc.displayName,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         },
-                        onClick = { onVrefPlusChange(v) }
-                    )
-                }
-            }
-        )
-
-        AdcDropdownChip(
-            label = formatVoltage(vrefMinus),
-            leading = "V-",
-            modifier = Modifier.weight(1f),
-            menuContent = {
-                listOf(0.0, -2.5, -5.0, -10.0).forEach { v ->
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                "${formatVoltage(v)} V",
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        },
-                        onClick = { onVrefMinusChange(v) }
+                        onClick = {
+                            onClose()
+                            onEncodingChange(enc)
+                        }
                     )
                 }
             }
@@ -317,52 +300,48 @@ private fun ConfigRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         AdcDropdownChip(
-            label = encoding.displayName,
-            leading = "Enc",
+            label = formatVoltage(vrefPlus),
+            leading = "V+",
             modifier = Modifier.weight(1f),
-            menuContent = {
-                AdcEncoding.entries.forEach { enc ->
+            menuContent = { onClose ->
+                listOf(1.8, 2.5, 3.3, 5.0, 10.0).forEach { v ->
                     DropdownMenuItem(
                         text = {
                             Text(
-                                enc.displayName,
+                                "${formatVoltage(v)} V",
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         },
-                        onClick = { onEncodingChange(enc) }
+                        onClick = {
+                            onClose()
+                            onVrefPlusChange(v)
+                        }
                     )
                 }
             }
         )
 
-        val preset = adcPresets[presetIndex]
-        Surface(
-            shape = RoundedCornerShape(6.dp),
-            color = if (MaterialTheme.colorScheme.background.luminance() < 0.5f)
-                Color(32, 32, 32) else Color(245, 245, 245),
-            modifier = Modifier
-                .weight(1f)
-                .clickable(onClick = onApplyPreset)
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = "▶",
-                    fontSize = 14.sp,
-                    color = if (MaterialTheme.colorScheme.background.luminance() < 0.5f)
-                        Color.White.copy(alpha = 0.82f) else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = preset.name,
-                    fontSize = 14.sp,
-                    color = if (MaterialTheme.colorScheme.background.luminance() < 0.5f)
-                        Color.White else MaterialTheme.colorScheme.onSurface
-                )
+        AdcDropdownChip(
+            label = formatVoltage(vrefMinus),
+            leading = "V-",
+            modifier = Modifier.weight(1f),
+            menuContent = { onClose ->
+                listOf(0.0, -2.5, -5.0, -10.0).forEach { v ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                "${formatVoltage(v)} V",
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        },
+                        onClick = {
+                            onClose()
+                            onVrefMinusChange(v)
+                        }
+                    )
+                }
             }
-        }
+        )
     }
 }
 
@@ -371,7 +350,7 @@ private fun AdcDropdownChip(
     label: String,
     leading: String,
     modifier: Modifier = Modifier,
-    menuContent: @Composable () -> Unit
+    menuContent: @Composable (onClose: () -> Unit) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
@@ -414,7 +393,7 @@ private fun AdcDropdownChip(
             onDismissRequest = { expanded = false },
             containerColor = menuContainerColor
         ) {
-            menuContent()
+            menuContent { expanded = false }
         }
     }
 }
